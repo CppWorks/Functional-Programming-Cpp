@@ -1,72 +1,69 @@
+#include <functional>
 #include <iostream>
 #include <vector>
-#include <functional>
 
-#include <range/v3/view.hpp>
 #include <range/v3/action.hpp>
 #include <range/v3/istream_range.hpp>
 #include <range/v3/to_container.hpp>
+#include <range/v3/view.hpp>
 
 using namespace ranges::v3;
 using namespace std::placeholders;
 
-std::string string_to_lower(const std::string &s) {
-    return s | view::transform(tolower);
-}
-
-std::string string_only_alnum(const std::string &s) {
-    return s | view::filter(isalnum);
-}
-
-int main(int argc, char *argv[])
+std::string string_to_lower(const std::string& s)
 {
-    const int n = argc <= 1
-                    ? 10
-                    : atoi(argv[1]);
+  return s | view::transform(tolower);
+}
 
-    const auto words =
-               // Getting a range of words (tokens) from cin
-               istream_range<std::string>(std::cin)
+std::string string_only_alnum(const std::string& s)
+{
+  return s | view::filter(isalnum);
+}
 
-               // Converting all words to lower-case
-               | view::transform(string_to_lower)
+int main(int argc, char* argv[])
+{
+  const int n = argc <= 1 ? 10 : atoi(argv[1]);
 
-               // Removing non alphanumeric characters from the words
-               | view::transform(string_only_alnum)
+  const auto words =
+    // Getting a range of words (tokens) from cin
+    istream_range<std::string>(std::cin)
 
-               // Some words could have only contained non alphanumeric characters
-               | view::remove_if(&std::string::empty)
+    // Converting all words to lower-case
+    | view::transform(string_to_lower)
 
-               // For sorting, we need a random-access collection
-               | to_vector | action::sort;
+    // Removing non alphanumeric characters from the words
+    | view::transform(string_only_alnum)
 
+    // Some words could have only contained non alphanumeric characters
+    | view::remove_if(&std::string::empty)
 
-    const auto results =
-               words
+    // For sorting, we need a random-access collection
+    | to_vector | action::sort;
 
-               // Grouping the same words
-               | view::group_by(std::equal_to<>())
+  const auto results = words
 
-               // Creating a pair that consists of a word and its
-               // frequency
-               | view::transform([] (const auto &group) {
-                         const auto begin       = std::begin(group);
-                         const auto end         = std::end(group);
-                         const int  count       = distance(begin, end);
+    // Grouping the same words
+    | view::group_by(std::equal_to<>())
+
+    // Creating a pair that consists of a word and its
+    // frequency
+    | view::transform([](const auto& group) {
+                         const auto begin = std::begin(group);
+                         const auto end = std::end(group);
+                         const int count = distance(begin, end);
                          const std::string word = *begin;
 
                          return std::make_pair(count, word);
-                     })
+                       })
 
-               // Sorting the resulting range by word frequencies
-               | to_vector | action::sort;
+    // Sorting the resulting range by word frequencies
+    | to_vector | action::sort;
 
+  for (auto value : results | view::reverse // Most frequent words first
+         | view::take(n)                    // Taking the top `n` results
+  ) {
+    std::cout << value.first << " " << value.second << std::endl;
+  }
 
-    for (auto value: results | view::reverse // Most frequent words first
-                             | view::take(n) // Taking the top `n` results
-            ) {
-        std::cout << value.first << " " << value.second << std::endl;
-    }
-
-    return 0;
+  return 0;
 }

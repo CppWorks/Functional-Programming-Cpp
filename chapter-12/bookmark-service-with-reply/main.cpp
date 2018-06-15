@@ -32,8 +32,8 @@ using expected_json = expected<json, std::exception_ptr>;
  * Basic bookmark information. Holds an URL and a title
  */
 struct bookmark_t {
-    std::string url;
-    std::string text;
+  std::string url;
+  std::string text;
 };
 
 /**
@@ -42,7 +42,7 @@ struct bookmark_t {
  */
 std::string to_string(const bookmark_t& page)
 {
-    return "[" + page.text + "](" + page.url + ")";
+  return "[" + page.text + "](" + page.url + ")";
 }
 
 /**
@@ -51,7 +51,7 @@ std::string to_string(const bookmark_t& page)
  */
 std::ostream& operator<<(std::ostream& out, const bookmark_t& page)
 {
-    return out << "[" << page.text << "](" << page.url << ")";
+  return out << "[" << page.text << "](" << page.url << ")";
 }
 
 /**
@@ -65,66 +65,55 @@ using expected_bookmark = expected<bookmark_t, std::exception_ptr>;
  */
 expected_bookmark bookmark_from_json(const json& data)
 {
-    return mtry([&] {
-            return bookmark_t { data.at("FirstURL"), data.at("Text") };
-        });
+  return mtry([&] { return bookmark_t{ data.at("FirstURL"), data.at("Text") }; });
 }
 
-
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
-    using namespace reactive::operators;
+  using namespace reactive::operators;
 
-    // We are lifting the transform and filter functions
-    // to work on the with_client<T> type that adds the
-    // socket information to the given value so that we
-    // can reply to the client
-    auto transform = [](auto f) {
-            return reactive::operators::transform(lift_with_client(f));
-        };
-    auto filter = [](auto f) {
-            return reactive::operators::filter(apply_with_client(f));
-        };
+  // We are lifting the transform and filter functions
+  // to work on the with_client<T> type that adds the
+  // socket information to the given value so that we
+  // can reply to the client
+  auto transform
+    = [](auto f) { return reactive::operators::transform(lift_with_client(f)); };
+  auto filter = [](auto f) { return reactive::operators::filter(apply_with_client(f)); };
 
-    boost::asio::io_service event_loop;
+  boost::asio::io_service event_loop;
 
-    auto pipeline =
-        service(event_loop)
-            | transform(trim)
+  auto pipeline = service(event_loop)
+    | transform(trim)
 
-            // Ignoring comments and empty messages
-            | filter([] (const std::string &message) {
-                return message.length() > 0 && message[0] != '#';
-            })
+    // Ignoring comments and empty messages
+    | filter([](const std::string& message) {
+                    return message.length() > 0 && message[0] != '#';
+                  })
 
-            // Trying to parse the input
-            | transform([] (const std::string &message) {
-                return mtry([&] {
-                    return json::parse(message);
-                });
-            })
+    // Trying to parse the input
+    | transform([](const std::string& message) {
+                    return mtry([&] { return json::parse(message); });
+                  })
 
-            // Converting the result into the bookmark
-            | transform([] (const auto& exp) {
-                return mbind(exp, bookmark_from_json);
-            })
+    // Converting the result into the bookmark
+    | transform([](const auto& exp) { return mbind(exp, bookmark_from_json); })
 
-            | sink([] (const auto &message) {
-                const auto exp_bookmark = message.value;
+    | sink([](const auto& message) {
+                    const auto exp_bookmark = message.value;
 
-                if (!exp_bookmark) {
-                    message.reply("ERROR: Request not understood\n");
-                    return;
-                }
+                    if (!exp_bookmark) {
+                      message.reply("ERROR: Request not understood\n");
+                      return;
+                    }
 
-                if (exp_bookmark->text.find("C++") != std::string::npos) {
-                    message.reply("OK: " + to_string(exp_bookmark.get()) + "\n");
-                } else {
-                    message.reply("ERROR: Not a C++-related link\n");
-                }
-            });
+                    if (exp_bookmark->text.find("C++") != std::string::npos) {
+                      message.reply("OK: " + to_string(exp_bookmark.get()) + "\n");
+                    } else {
+                      message.reply("ERROR: Not a C++-related link\n");
+                    }
+                  });
 
-    // Starting the Boost.ASIO service
-    std::cerr << "Service is running...\n";
-    event_loop.run();
+  // Starting the Boost.ASIO service
+  std::cerr << "Service is running...\n";
+  event_loop.run();
 }

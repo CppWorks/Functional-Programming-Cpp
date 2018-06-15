@@ -13,16 +13,15 @@
 #include "dsl.h"
 
 namespace person {
-    struct record {
-        std::string name;
-        std::string surname;
-        unsigned int age;
-    };
+  struct record {
+    std::string name;
+    std::string surname;
+    unsigned int age;
+  };
 
-    auto name    = field { &record::name };
-    auto surname = field { &record::surname };
-    auto age     = field { &record::age };
+  auto name = field{ &record::name };
+  auto surname = field{ &record::surname };
+  auto age = field{ &record::age };
 } // namespace person
-
 
 #endif /* !PERSON_H */

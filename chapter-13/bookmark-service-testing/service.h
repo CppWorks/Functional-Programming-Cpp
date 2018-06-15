@@ -2,13 +2,13 @@
 #define SERVICE_H
 
 // Standard library
-#include <iostream>
 #include <functional>
+#include <iostream>
 
 // We are faking the reactive stream with a range
+#include <range/v3/to_container.hpp>
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/transform.hpp>
-#include <range/v3/to_container.hpp>
 
 /**
  * A structure to contain a value of any type,
@@ -17,13 +17,13 @@
  */
 template <typename MessageType>
 struct with_expected_reply {
-    MessageType value;
-    std::string expected_reply;
+  MessageType value;
+  std::string expected_reply;
 
-    void reply(const std::string& message) const
-    {
-        REQUIRE(message == expected_reply);
-    }
+  void reply(const std::string& message) const
+  {
+    REQUIRE(message == expected_reply);
+  }
 };
 
 /**
@@ -33,8 +33,8 @@ struct with_expected_reply {
 template <typename MessageType>
 auto make_with_expected_reply(MessageType&& value, const std::string& expected_reply)
 {
-    return with_expected_reply<MessageType>{
-        std::forward<MessageType>(value), expected_reply};
+  return with_expected_reply<MessageType>{ std::forward<MessageType>(value),
+                                           expected_reply };
 }
 
 /**
@@ -44,9 +44,10 @@ auto make_with_expected_reply(MessageType&& value, const std::string& expected_r
 template <typename F>
 auto lift_with_expected_reply(F&& function)
 {
-    return [function = std::forward<F>(function)] (auto &&ws) {
-        return make_with_expected_reply(std::invoke(function, ws.value), ws.expected_reply);
-    };
+  return [function = std::forward<F>(function)](auto&& ws)
+  {
+    return make_with_expected_reply(std::invoke(function, ws.value), ws.expected_reply);
+  };
 }
 
 /**
@@ -60,9 +61,10 @@ auto lift_with_expected_reply(F&& function)
 template <typename F>
 auto apply_with_expected_reply(F&& function)
 {
-    return [function = std::forward<F>(function)] (auto &&ws) {
-        return std::invoke(function, std::forward<decltype(ws)>(ws).value);
-    };
+  return [function = std::forward<F>(function)](auto&& ws)
+  {
+    return std::invoke(function, std::forward<decltype(ws)>(ws).value);
+  };
 }
 
 #endif

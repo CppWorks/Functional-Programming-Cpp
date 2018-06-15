@@ -8,98 +8,88 @@
 #ifndef DSL_H
 #define DSL_H
 
-#include <type_traits>
 #include <functional>
+#include <type_traits>
 
 template <typename Member, typename Value>
 struct update {
-    update(Member member, Value value)
-        : member(member)
-        , value(value)
-    {
+  update(Member member, Value value)
+    : member(member)
+    , value(value)
+  {
+  }
+
+  template <typename Record>
+  bool operator()(Record& record)
+  {
+    if constexpr (std::is_invocable_r<bool, Member, Record, Value>()) {
+      return std::invoke(member, record, value);
+
+    } else if constexpr (std::is_invocable<Member, Record, Value>()) {
+      std::invoke(member, record, value);
+      return true;
+
+    } else {
+      std::invoke(member, record) = value;
+      return true;
     }
+  }
 
-    template <typename Record>
-    bool operator() (Record& record)
-    {
-        if constexpr (std::is_invocable_r<bool, Member, Record, Value>()) {
-            return std::invoke(member, record, value);
-
-        } else if constexpr (std::is_invocable<Member, Record, Value>()) {
-            std::invoke(member, record, value);
-            return true;
-
-        } else {
-            std::invoke(member, record) = value;
-            return true;
-        }
-    }
-
-    Member member;
-    Value value;
+  Member member;
+  Value value;
 };
-
 
 template <typename Member>
 struct field {
-    field(Member member)
-        : member(member)
-    {
-    }
+  field(Member member)
+    : member(member)
+  {
+  }
 
-    template <typename Value>
-    auto operator= (Value value) const
-    {
-        return update { member, value };
-    }
+  template <typename Value>
+  auto operator=(Value value) const
+  {
+    return update{ member, value };
+  }
 
-    Member member;
+  Member member;
 };
-
-
-
 
 template <typename Record>
 class transaction {
 public:
-    transaction(Record& record)
-        : m_record(record)
-    {
+  transaction(Record& record)
+    : m_record(record)
+  {
+  }
+
+  template <typename... Updates>
+  bool operator()(Updates... updates)
+  {
+    auto temp = m_record;
+
+    if (all(updates(temp)...)) {
+      std::swap(m_record, temp);
+      return true;
     }
 
-    template <typename ...Updates>
-    bool operator() (Updates ...updates)
-    {
-        auto temp = m_record;
-
-        if (all( updates(temp)... )) {
-            std::swap(m_record, temp);
-            return true;
-        }
-
-        return false;
-    }
+    return false;
+  }
 
 private:
-    template <typename ...Updates>
-    bool all(Updates... results) const
-    {
-        return (... && results);
-    }
+  template <typename... Updates>
+  bool all(Updates... results) const
+  {
+    return (... && results);
+  }
 
-    Record &m_record;
+  Record& m_record;
 };
 
 template <typename Record>
 auto with(Record& record)
 {
-    return transaction(record);
+  return transaction(record);
 }
-
-
-
-
-
-
 
 #endif /* !DSL_H */
